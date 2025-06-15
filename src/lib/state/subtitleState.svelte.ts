@@ -82,11 +82,13 @@ export function addSubtitle(startTime: number, endTime: number, text: string) {
 }
 
 // Database functions
-export async function saveSubtitleToDatabase(subtitle: SubtitleItem) {
-    if (!subtitleState.currentSession) return;
+export async function saveSubtitleToDatabase(
+    subtitle: SubtitleItem
+): Promise<string | null> {
+    if (!subtitleState.currentSession) return null;
 
     try {
-        await fetch("/api/subtitles", {
+        const response = await fetch("/api/subtitles", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -99,9 +101,24 @@ export async function saveSubtitleToDatabase(subtitle: SubtitleItem) {
                 order: subtitle.order,
             }),
         });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Update the local state with the database-generated ID
+            const index = subtitleState.subtitles.findIndex(
+                (sub) => sub.id === subtitle.id
+            );
+            if (index !== -1 && data.subtitle) {
+                const oldId = subtitle.id;
+                const newId = data.subtitle.id;
+                subtitleState.subtitles[index].id = newId;
+                return newId; // Return the new ID so caller can update references
+            }
+        }
     } catch (error) {
         console.error("Failed to save subtitle:", error);
     }
+    return null;
 }
 
 export function updateSubtitle(id: string, updates: Partial<SubtitleItem>) {

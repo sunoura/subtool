@@ -1,32 +1,16 @@
 <script lang="ts">
-    import {
-        Plus,
-        Trash2,
-        Edit3,
-        Save,
-        X,
-        Download,
-        Play,
-        ChevronLeft,
-        ChevronRight,
-    } from "lucide-svelte";
+    import { Trash2, Edit3, Save, X, Play, Plus } from "lucide-svelte";
     import {
         subtitleState,
-        addSubtitle,
         updateSubtitle,
         deleteSubtitle,
-        setSelectedSubtitle,
         setCurrentTime,
         formatTime,
         parseTime,
-        exportToSRT,
         getSortedSubtitles,
         saveSubtitleToDatabase,
     } from "$lib/state/subtitleState.svelte.js";
 
-    let newSubtitleText = $state("");
-    let newSubtitleStart = $state("");
-    let newSubtitleEnd = $state("");
     let editingSubtitle = $state<string | null>(null);
     let editText = $state("");
     let editStart = $state("");
@@ -35,32 +19,25 @@
     // Create derived state inside component
     const sortedSubtitles = $derived(getSortedSubtitles());
 
-    function handleAddSubtitle() {
-        if (!newSubtitleText.trim()) return;
-
-        const startTime = newSubtitleStart
-            ? parseTime(newSubtitleStart)
-            : subtitleState.currentTime;
-        const endTime = newSubtitleEnd
-            ? parseTime(newSubtitleEnd)
-            : startTime + 3; // Default 3 seconds duration
-
-        addSubtitle(startTime, endTime, newSubtitleText.trim());
-
-        // Reset form
-        newSubtitleText = "";
-        newSubtitleStart = "";
-        newSubtitleEnd = "";
-    }
-
-    function handleQuickAdd() {
-        if (!newSubtitleText.trim()) return;
-
-        const startTime = subtitleState.currentTime;
-        const endTime = startTime + 3; // Default 3 seconds duration
-
-        addSubtitle(startTime, endTime, newSubtitleText.trim());
-        newSubtitleText = "";
+    function scrollToEditingSubtitle(subtitleId: string) {
+        // Find the subtitle container that's being edited
+        const subtitleContainers = document.querySelectorAll(
+            ".border.border-gray-200.rounded-xs.p-4"
+        );
+        for (const container of subtitleContainers) {
+            const editTextArea = container.querySelector(
+                'textarea[rows="2"]'
+            ) as HTMLTextAreaElement;
+            if (editTextArea) {
+                // Scroll the container into view with smooth behavior
+                container.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "nearest",
+                });
+                break;
+            }
+        }
     }
 
     function startEditing(subtitle: any) {
@@ -68,6 +45,11 @@
         editText = subtitle.text;
         editStart = formatTime(subtitle.startTime);
         editEnd = formatTime(subtitle.endTime);
+
+        // Scroll to the edit form after a brief delay
+        setTimeout(() => {
+            scrollToEditingSubtitle(subtitle.id);
+        }, 100);
     }
 
     function saveEdit() {
@@ -95,12 +77,12 @@
         }
     }
 
-    function addSubtitleAfter(endTime: number) {
+    async function addSubtitleAfter(endTime: number) {
         // Create a new subtitle starting exactly where the clicked subtitle ends
         const startTime = endTime;
         const newEndTime = startTime + 3; // Default 3 seconds duration
 
-        const newSubtitleId = crypto.randomUUID();
+        const newSubtitleId = crypto.randomUUID() as string;
         const newSubtitle = {
             id: newSubtitleId,
             startTime,
@@ -113,22 +95,28 @@
         subtitleState.subtitles.push(newSubtitle);
 
         // Auto-save to database if we have a current session
+        let actualId = newSubtitleId;
         if (subtitleState.currentSession) {
-            saveSubtitleToDatabase(newSubtitle);
+            const dbId = await saveSubtitleToDatabase(newSubtitle);
+            if (dbId) {
+                actualId = dbId;
+            }
         }
 
-        // Immediately put the new subtitle into edit mode
-        editingSubtitle = newSubtitleId;
+        // Immediately put the new subtitle into edit mode using the actual ID
+        editingSubtitle = actualId;
         editText = "";
         editStart = formatTime(startTime);
         editEnd = formatTime(newEndTime);
 
-        // Focus the edit text area after a brief delay
+        // Focus the edit text area and scroll to it after a brief delay
         setTimeout(() => {
+            scrollToEditingSubtitle(actualId);
+            // Also focus the textarea
             const editTextArea = document.querySelector(
                 'textarea[rows="2"]'
             ) as HTMLTextAreaElement;
-            if (editTextArea && editingSubtitle === newSubtitleId) {
+            if (editTextArea) {
                 editTextArea.focus();
             }
         }, 100);
@@ -145,136 +133,9 @@
             setCurrentTime(startTime);
         }
     }
-
-    function goToPreviousSubtitle() {
-        const currentTime = subtitleState.currentTime;
-        const sorted = getSortedSubtitles();
-
-        // Find the previous subtitle before the current time
-        let previousSubtitle = null;
-        for (let i = sorted.length - 1; i >= 0; i--) {
-            if (sorted[i].startTime < currentTime - 0.1) {
-                // Small buffer to avoid same subtitle
-                previousSubtitle = sorted[i];
-                break;
-            }
-        }
-
-        if (previousSubtitle) {
-            seekToSubtitle(previousSubtitle.startTime);
-        }
-    }
-
-    function goToNextSubtitle() {
-        const currentTime = subtitleState.currentTime;
-        const sorted = getSortedSubtitles();
-
-        // Find the next subtitle after the current time
-        const nextSubtitle = sorted.find(
-            (sub) => sub.startTime > currentTime + 0.1
-        ); // Small buffer
-
-        if (nextSubtitle) {
-            seekToSubtitle(nextSubtitle.startTime);
-        }
-    }
-
-    function downloadSRT() {
-        const srtContent = exportToSRT();
-        const blob = new Blob([srtContent], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `subtitles-${Date.now()}.srt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
 </script>
 
 <div class="bg-white p-6 min-h-[100vh]">
-    <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center space-x-2">
-            <button
-                onclick={goToPreviousSubtitle}
-                disabled={subtitleState.subtitles.length === 0}
-                class="flex text-xs uppercase font-medium items-center space-x-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
-                title="Go to previous subtitle"
-            >
-                <ChevronLeft size={16} />
-                <span>Previous</span>
-            </button>
-            <button
-                onclick={goToNextSubtitle}
-                disabled={subtitleState.subtitles.length === 0}
-                class="flex text-xs uppercase font-medium items-center space-x-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
-                title="Go to next subtitle"
-            >
-                <span>Next</span>
-                <ChevronRight size={16} />
-            </button>
-        </div>
-        <button
-            onclick={downloadSRT}
-            disabled={subtitleState.subtitles.length === 0}
-            class="flex text-xs uppercase font-medium items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
-        >
-            <Download size={16} />
-            <span>Export SRT</span>
-        </button>
-    </div>
-
-    <!-- Add subtitle form -->
-    <div class="rounded-xs mb-6">
-        <div class="space-y-4">
-            <div>
-                <textarea
-                    bind:value={newSubtitleText}
-                    placeholder="Enter subtitle text..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="2"
-                ></textarea>
-            </div>
-
-            <!-- <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Start Time
-                    </label>
-                    <input
-                        bind:value={newSubtitleStart}
-                        type="text"
-                        placeholder="00:00.000"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        End Time
-                    </label>
-                    <input
-                        bind:value={newSubtitleEnd}
-                        type="text"
-                        placeholder="00:03.000"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-            </div> -->
-
-            <div class="flex space-x-3">
-                <button
-                    onclick={handleQuickAdd}
-                    disabled={!newSubtitleText.trim()}
-                    class="flex text-xs uppercase font-medium items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
-                >
-                    <Plus size={16} />
-                    <span>Add</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Subtitles list -->
     <div class="space-y-3">
         {#if subtitleState.subtitles.length === 0}
@@ -287,7 +148,7 @@
                         <div class="space-y-3">
                             <textarea
                                 bind:value={editText}
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 rows="2"
                             ></textarea>
                             <div class="grid grid-cols-2 gap-3">
@@ -343,14 +204,6 @@
                                 <p class="text-gray-800">{subtitle.text}</p>
                             </div>
                             <div class="flex space-x-2 ml-4">
-                                <button
-                                    onclick={() =>
-                                        seekToSubtitle(subtitle.startTime)}
-                                    class="p-1 text-gray-500 hover:text-green-600 transition-colors"
-                                    title="Go to this subtitle in video"
-                                >
-                                    <Play size={16} />
-                                </button>
                                 <button
                                     onclick={() =>
                                         addSubtitleAfter(subtitle.endTime)}

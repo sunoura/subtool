@@ -107,13 +107,51 @@
     }
 
     function skipBackward() {
-        seekToTime(Math.max(0, subtitleState.currentTime - 5));
+        // Go to previous subtitle
+        const currentTime = subtitleState.currentTime;
+        const sorted = getSortedSubtitles();
+
+        // Find the previous subtitle before the current time
+        let previousSubtitle = null;
+        for (let i = sorted.length - 1; i >= 0; i--) {
+            if (sorted[i].startTime < currentTime - 0.1) {
+                // Small buffer to avoid same subtitle
+                previousSubtitle = sorted[i];
+                break;
+            }
+        }
+
+        if (previousSubtitle) {
+            seekToTime(previousSubtitle.startTime);
+        }
     }
 
     function skipForward() {
-        seekToTime(
-            Math.min(subtitleState.videoDuration, subtitleState.currentTime + 5)
-        );
+        // Go to next subtitle
+        const currentTime = subtitleState.currentTime;
+        const sorted = getSortedSubtitles();
+
+        // Find the next subtitle after the current time
+        const nextSubtitle = sorted.find(
+            (sub) => sub.startTime > currentTime + 0.1
+        ); // Small buffer
+
+        if (nextSubtitle) {
+            seekToTime(nextSubtitle.startTime);
+        }
+    }
+
+    function copyCurrentTimeToClipboard() {
+        const formattedTime = formatTime(subtitleState.currentTime);
+        navigator.clipboard
+            .writeText(formattedTime)
+            .then(() => {
+                // Optional: You could add a toast notification here
+                console.log("Current time copied to clipboard:", formattedTime);
+            })
+            .catch((err) => {
+                console.error("Failed to copy time to clipboard:", err);
+            });
     }
 </script>
 
@@ -122,11 +160,12 @@
         <div class="relative">
             <video
                 bind:this={videoElement}
-                class="w-full h-96 object-contain"
+                class="w-full h-104 object-contain cursor-pointer"
                 onloadedmetadata={handleLoadedMetadata}
                 ontimeupdate={handleTimeUpdate}
                 onplay={handlePlay}
                 onpause={handlePause}
+                onclick={togglePlay}
                 controls={false}
             >
                 <track kind="captions" />
@@ -143,7 +182,7 @@
         </div>
 
         <!-- Controls -->
-        <div class="bg-gray-900 p-4 space-y-4">
+        <div class="bg-gray-900 pt-4 px-4">
             <!-- Progress bar -->
             <div class="">
                 <div class="relative">
@@ -178,7 +217,13 @@
                     {/if}
                 </div>
                 <div class="flex justify-between text-sm text-gray-400">
-                    <span>{formatTime(subtitleState.currentTime)}</span>
+                    <span
+                        onclick={copyCurrentTimeToClipboard}
+                        class="cursor-pointer hover:text-white transition-colors"
+                        title="Click to copy current time to clipboard"
+                    >
+                        {formatTime(subtitleState.currentTime)}
+                    </span>
                     <span>{formatTime(subtitleState.videoDuration)}</span>
                 </div>
             </div>

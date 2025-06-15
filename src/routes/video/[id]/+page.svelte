@@ -5,6 +5,7 @@
     import FileUpload from "$lib/components/FileUpload.svelte";
     import VideoPlayer from "$lib/components/VideoPlayer.svelte";
     import SubtitleEditor from "$lib/components/SubtitleEditor.svelte";
+    import SubtitleControls from "$lib/components/SubtitleControls.svelte";
     import {
         subtitleState,
         setCurrentSession,
@@ -65,9 +66,9 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-[100vh]">
+        <div class="grid grid-cols-1 lg:grid-cols-2 min-h-[100vh]">
             <!-- Left Column: Video Player and Upload - Fixed/Sticky -->
-            <div class="lg:sticky lg:top-8 lg:h-fit space-y-6 p-4">
+            <div class="lg:sticky lg:h-fit p-4">
                 <!-- Show upload only if no video is currently loaded -->
                 {#if !subtitleState.currentVideoUrl}
                     <div
@@ -84,6 +85,7 @@
                     </div>
                 {:else}
                     <VideoPlayer />
+                    <SubtitleControls />
                 {/if}
             </div>
 

@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request }) => {
             !sessionId ||
             startTime === undefined ||
             endTime === undefined ||
-            !text
+            text === undefined
         ) {
             return json({ error: "Missing required fields" }, { status: 400 });
         }
