@@ -23,20 +23,33 @@
         }
     });
 
-    // Add keyboard support for spacebar play/pause
+    // Add keyboard support for spacebar play/pause and arrow scrubbing
     $effect(() => {
         function handleKeyDown(event: KeyboardEvent) {
-            // Only handle spacebar when video is loaded and not typing in an input/textarea
-            if (event.code === "Space" && subtitleState.currentVideoUrl) {
-                const target = event.target as HTMLElement;
-                const isTyping =
-                    target.tagName === "INPUT" ||
-                    target.tagName === "TEXTAREA" ||
-                    target.isContentEditable;
+            const target = event.target as HTMLElement;
+            const isTyping =
+                target.tagName === "INPUT" ||
+                target.tagName === "TEXTAREA" ||
+                target.isContentEditable;
 
-                if (!isTyping) {
+            // Only handle keyboard shortcuts when video is loaded and not typing
+            if (subtitleState.currentVideoUrl && !isTyping) {
+                if (event.code === "Space") {
                     event.preventDefault(); // Prevent page scroll
                     togglePlay();
+                } else if (event.code === "ArrowLeft") {
+                    event.preventDefault();
+                    // Scrub backward 1 second
+                    const newTime = Math.max(0, subtitleState.currentTime - 1);
+                    seekToTime(newTime);
+                } else if (event.code === "ArrowRight") {
+                    event.preventDefault();
+                    // Scrub forward 1 second
+                    const newTime = Math.min(
+                        subtitleState.videoDuration,
+                        subtitleState.currentTime + 1
+                    );
+                    seekToTime(newTime);
                 }
             }
         }

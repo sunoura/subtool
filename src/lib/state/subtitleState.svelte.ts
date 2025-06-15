@@ -82,7 +82,7 @@ export function addSubtitle(startTime: number, endTime: number, text: string) {
 }
 
 // Database functions
-async function saveSubtitleToDatabase(subtitle: SubtitleItem) {
+export async function saveSubtitleToDatabase(subtitle: SubtitleItem) {
     if (!subtitleState.currentSession) return;
 
     try {

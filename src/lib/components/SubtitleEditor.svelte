@@ -21,6 +21,7 @@
         parseTime,
         exportToSRT,
         getSortedSubtitles,
+        saveSubtitleToDatabase,
     } from "$lib/state/subtitleState.svelte.js";
 
     let newSubtitleText = $state("");
@@ -92,6 +93,45 @@
         if (confirm("Are you sure you want to delete this subtitle?")) {
             deleteSubtitle(id);
         }
+    }
+
+    function addSubtitleAfter(endTime: number) {
+        // Create a new subtitle starting exactly where the clicked subtitle ends
+        const startTime = endTime;
+        const newEndTime = startTime + 3; // Default 3 seconds duration
+
+        const newSubtitleId = crypto.randomUUID();
+        const newSubtitle = {
+            id: newSubtitleId,
+            startTime,
+            endTime: newEndTime,
+            text: "",
+            order: subtitleState.subtitles.length + 1,
+        };
+
+        // Add to state
+        subtitleState.subtitles.push(newSubtitle);
+
+        // Auto-save to database if we have a current session
+        if (subtitleState.currentSession) {
+            saveSubtitleToDatabase(newSubtitle);
+        }
+
+        // Immediately put the new subtitle into edit mode
+        editingSubtitle = newSubtitleId;
+        editText = "";
+        editStart = formatTime(startTime);
+        editEnd = formatTime(newEndTime);
+
+        // Focus the edit text area after a brief delay
+        setTimeout(() => {
+            const editTextArea = document.querySelector(
+                'textarea[rows="2"]'
+            ) as HTMLTextAreaElement;
+            if (editTextArea && editingSubtitle === newSubtitleId) {
+                editTextArea.focus();
+            }
+        }, 100);
     }
 
     function seekToSubtitle(startTime: number) {
@@ -310,6 +350,14 @@
                                     title="Go to this subtitle in video"
                                 >
                                     <Play size={16} />
+                                </button>
+                                <button
+                                    onclick={() =>
+                                        addSubtitleAfter(subtitle.endTime)}
+                                    class="p-1 text-gray-500 hover:text-purple-600 transition-colors"
+                                    title="Add subtitle starting where this one ends"
+                                >
+                                    <Plus size={16} />
                                 </button>
                                 <button
                                     onclick={() => startEditing(subtitle)}
