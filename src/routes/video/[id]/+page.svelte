@@ -88,7 +88,7 @@
             </div>
 
             <!-- Right Column: Subtitle Editor - Scrollable -->
-            <div class="lg:overflow-y-auto lg:max-h-[calc(100vh)] ">
+            <div class="lg:overflow-y-auto lg:max-h-[calc(100vh)]">
                 <SubtitleEditor />
             </div>
         </div>

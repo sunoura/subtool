@@ -7,6 +7,8 @@
         X,
         Download,
         Play,
+        ChevronLeft,
+        ChevronRight,
     } from "lucide-svelte";
     import {
         subtitleState,
@@ -104,6 +106,39 @@
         }
     }
 
+    function goToPreviousSubtitle() {
+        const currentTime = subtitleState.currentTime;
+        const sorted = getSortedSubtitles();
+
+        // Find the previous subtitle before the current time
+        let previousSubtitle = null;
+        for (let i = sorted.length - 1; i >= 0; i--) {
+            if (sorted[i].startTime < currentTime - 0.1) {
+                // Small buffer to avoid same subtitle
+                previousSubtitle = sorted[i];
+                break;
+            }
+        }
+
+        if (previousSubtitle) {
+            seekToSubtitle(previousSubtitle.startTime);
+        }
+    }
+
+    function goToNextSubtitle() {
+        const currentTime = subtitleState.currentTime;
+        const sorted = getSortedSubtitles();
+
+        // Find the next subtitle after the current time
+        const nextSubtitle = sorted.find(
+            (sub) => sub.startTime > currentTime + 0.1
+        ); // Small buffer
+
+        if (nextSubtitle) {
+            seekToSubtitle(nextSubtitle.startTime);
+        }
+    }
+
     function downloadSRT() {
         const srtContent = exportToSRT();
         const blob = new Blob([srtContent], { type: "text/plain" });
@@ -120,10 +155,30 @@
 
 <div class="bg-white p-6 min-h-[100vh]">
     <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-2">
+            <button
+                onclick={goToPreviousSubtitle}
+                disabled={subtitleState.subtitles.length === 0}
+                class="flex text-xs uppercase font-medium items-center space-x-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
+                title="Go to previous subtitle"
+            >
+                <ChevronLeft size={16} />
+                <span>Previous</span>
+            </button>
+            <button
+                onclick={goToNextSubtitle}
+                disabled={subtitleState.subtitles.length === 0}
+                class="flex text-xs uppercase font-medium items-center space-x-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
+                title="Go to next subtitle"
+            >
+                <span>Next</span>
+                <ChevronRight size={16} />
+            </button>
+        </div>
         <button
             onclick={downloadSRT}
             disabled={subtitleState.subtitles.length === 0}
-            class="flex items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
+            class="flex text-xs uppercase font-medium items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
         >
             <Download size={16} />
             <span>Export SRT</span>
@@ -171,18 +226,10 @@
                 <button
                     onclick={handleQuickAdd}
                     disabled={!newSubtitleText.trim()}
-                    class="flex items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
+                    class="flex text-xs uppercase font-medium items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
                 >
                     <Plus size={16} />
-                    <span>Quick Add (Current Time)</span>
-                </button>
-                <button
-                    onclick={handleAddSubtitle}
-                    disabled={!newSubtitleText.trim()}
-                    class="flex items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
-                >
-                    <Plus size={16} />
-                    <span>Add Subtitle</span>
+                    <span>Add</span>
                 </button>
             </div>
         </div>
