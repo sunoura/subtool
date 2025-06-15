@@ -65,13 +65,13 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh)]">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-[100vh]">
             <!-- Left Column: Video Player and Upload - Fixed/Sticky -->
             <div class="lg:sticky lg:top-8 lg:h-fit space-y-6 p-4">
                 <!-- Show upload only if no video is currently loaded -->
                 {#if !subtitleState.currentVideoUrl}
                     <div
-                        class="bg-blue-50 border border-blue-200 rounded-lg p-4"
+                        class="bg-blue-50 border border-blue-200 rounded-xs p-4"
                     >
                         <h3 class="text-lg font-semibold text-blue-800 mb-2">
                             Upload Video File

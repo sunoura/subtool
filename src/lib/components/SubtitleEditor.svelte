@@ -186,7 +186,7 @@
     </div>
 
     <!-- Add subtitle form -->
-    <div class="bg-gray-50 rounded-xs mb-6">
+    <div class="rounded-xs mb-6">
         <div class="space-y-4">
             <div>
                 <textarea

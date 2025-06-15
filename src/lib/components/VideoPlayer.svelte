@@ -7,6 +7,7 @@
         setVideoDuration,
         formatTime,
         getCurrentSubtitle,
+        getSortedSubtitles,
     } from "$lib/state/subtitleState.svelte.js";
 
     let videoElement: HTMLVideoElement;
@@ -14,6 +15,7 @@
 
     // Create derived state inside component
     const currentSubtitle = $derived(getCurrentSubtitle());
+    const sortedSubtitles = $derived(getSortedSubtitles());
 
     $effect(() => {
         if (videoElement && subtitleState.currentVideoUrl) {
@@ -102,7 +104,7 @@
     }
 </script>
 
-<div class="bg-black rounded-lg overflow-hidden">
+<div class="bg-black rounded-xs overflow-hidden">
     {#if subtitleState.currentVideoUrl}
         <div class="relative">
             <video
@@ -130,16 +132,38 @@
         <!-- Controls -->
         <div class="bg-gray-900 p-4 space-y-4">
             <!-- Progress bar -->
-            <div class="space-y-2">
-                <input
-                    bind:this={progressBar}
-                    type="range"
-                    min="0"
-                    max={subtitleState.videoDuration || 100}
-                    value={subtitleState.currentTime}
-                    oninput={handleProgressChange}
-                    class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                />
+            <div class="">
+                <div class="relative">
+                    <input
+                        bind:this={progressBar}
+                        type="range"
+                        min="0"
+                        max={subtitleState.videoDuration || 100}
+                        value={subtitleState.currentTime}
+                        oninput={handleProgressChange}
+                        class="w-full h-2 bg-gray-700 rounded-xs appearance-none cursor-pointer range-slider"
+                    />
+
+                    <!-- Subtitle markers -->
+                    {#if subtitleState.videoDuration > 0}
+                        {#each sortedSubtitles as subtitle (subtitle.id)}
+                            {@const percentage =
+                                subtitle.startTime /
+                                subtitleState.videoDuration}
+                            {@const position = percentage * 100}
+                            <div
+                                class="absolute top-0 w-0.5 h-2 bg-blue-400 pointer-events-none z-10"
+                                style="left: calc({position}% + 0.2px)"
+                                title="Subtitle at {formatTime(
+                                    subtitle.startTime
+                                )}: {subtitle.text.slice(0, 30)}{subtitle.text
+                                    .length > 30
+                                    ? '...'
+                                    : ''}"
+                            ></div>
+                        {/each}
+                    {/if}
+                </div>
                 <div class="flex justify-between text-sm text-gray-400">
                     <span>{formatTime(subtitleState.currentTime)}</span>
                     <span>{formatTime(subtitleState.videoDuration)}</span>
@@ -180,3 +204,35 @@
         </div>
     {/if}
 </div>
+
+<style>
+    /* Custom range slider styling */
+    .range-slider::-webkit-slider-thumb {
+        appearance: none;
+        width: 3px;
+        height: 16px;
+        background: #ffffff;
+        cursor: pointer;
+        border-radius: 1px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .range-slider::-moz-range-thumb {
+        width: 3px;
+        height: 16px;
+        background: #ffffff;
+        cursor: pointer;
+        border-radius: 1px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .range-slider::-webkit-slider-track {
+        background: transparent;
+    }
+
+    .range-slider::-moz-range-track {
+        background: transparent;
+    }
+</style>
