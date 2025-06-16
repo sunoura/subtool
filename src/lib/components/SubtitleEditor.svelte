@@ -92,6 +92,7 @@
         };
 
         // Add to state
+        
         subtitleState.subtitles.push(newSubtitle);
 
         // Auto-save to database if we have a current session
