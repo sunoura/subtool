@@ -2,7 +2,7 @@ interface QueuedRequest {
     id: string;
     url: string;
     method: string;
-    body?: any;
+    body?: string; // Store as JSON string, not parsed object
     headers?: Record<string, string>;
     timestamp: number;
     retries: number;
@@ -58,7 +58,7 @@ export async function checkConnection(): Promise<boolean> {
 export function queueFailedRequest(
     url: string,
     method: string,
-    body?: any,
+    body?: string,
     headers?: Record<string, string>
 ): string {
     const requestId = crypto.randomUUID();
@@ -98,7 +98,7 @@ export async function retryQueuedRequests() {
             const response = await fetch(request.url, {
                 method: request.method,
                 headers: request.headers,
-                body: request.body ? JSON.stringify(request.body) : undefined,
+                body: request.body, // Already a JSON string
             });
 
             if (response.ok) {
@@ -168,10 +168,11 @@ export async function safeFetch(
 
         if (options.method !== "GET" && options.method !== "HEAD") {
             // Only queue non-read operations
+            // Store the body as-is (it's already a JSON string from the original request)
             queueFailedRequest(
                 url,
                 options.method || "GET",
-                options.body ? JSON.parse(options.body as string) : undefined,
+                options.body as string,
                 options.headers as Record<string, string>
             );
         }

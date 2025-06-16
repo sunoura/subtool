@@ -1,5 +1,8 @@
 import type { Session, Subtitle } from "$lib/server/db/schema.js";
-import { safeFetch } from "$lib/stores/connectionStore.svelte.js";
+import {
+    safeFetch,
+    connectionState,
+} from "$lib/stores/connectionStore.svelte.js";
 
 export interface SubtitleItem {
     id: string;
@@ -33,68 +36,7 @@ const initialState: AppState = {
 
 export const subtitleState = $state<AppState>(initialState);
 
-// Local storage backup functions
-const STORAGE_KEY = "subtitler-backup";
-
-export interface BackupData {
-    sessionId: string | null;
-    subtitles: SubtitleItem[];
-    timestamp: number;
-}
-
-function saveToLocalStorage() {
-    if (typeof window === "undefined") return;
-
-    const backup: BackupData = {
-        sessionId: subtitleState.currentSession?.id || null,
-        subtitles: subtitleState.subtitles,
-        timestamp: Date.now(),
-    };
-
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(backup));
-        console.log("Backup saved to localStorage", backup);
-    } catch (error) {
-        console.error("Failed to save backup to localStorage:", error);
-    }
-}
-
-export function loadFromLocalStorage(): BackupData | null {
-    if (typeof window === "undefined") return null;
-
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const backup: BackupData = JSON.parse(stored);
-            console.log("Loaded backup from localStorage", backup);
-            return backup;
-        }
-    } catch (error) {
-        console.error("Failed to load backup from localStorage:", error);
-    }
-
-    return null;
-}
-
-export function clearLocalStorage() {
-    if (typeof window === "undefined") return;
-
-    try {
-        localStorage.removeItem(STORAGE_KEY);
-        console.log("Cleared localStorage backup");
-    } catch (error) {
-        console.error("Failed to clear localStorage backup:", error);
-    }
-}
-
-export function hasUnsavedChanges(): boolean {
-    const backup = loadFromLocalStorage();
-    if (!backup) return false;
-
-    // Check if local backup is newer than 5 minutes ago
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    return backup.timestamp > fiveMinutesAgo && backup.subtitles.length > 0;
-}
+// Removed auto-backup functionality - keeping server connectivity warnings only
 
 // Helper functions for creating derived state in components
 export function getCurrentSubtitle() {
@@ -181,6 +123,13 @@ export function setVideoDuration(duration: number) {
 }
 
 export function addSubtitle(startTime: number, endTime: number, text: string) {
+    // Show warning if server is offline
+    if (!connectionState.isOnline && subtitleState.currentSession) {
+        alert(
+            "Warning: Server is offline. This subtitle will be saved locally but not synced to the database until connection is restored."
+        );
+    }
+
     const newSubtitle: SubtitleItem = {
         id: crypto.randomUUID(),
         startTime,
@@ -189,9 +138,6 @@ export function addSubtitle(startTime: number, endTime: number, text: string) {
         order: subtitleState.subtitles.length + 1,
     };
     subtitleState.subtitles.push(newSubtitle);
-
-    // Always save to localStorage first
-    saveToLocalStorage();
 
     // Auto-save to database if we have a current session
     if (subtitleState.currentSession) {
@@ -247,9 +193,6 @@ export function updateSubtitle(id: string, updates: Partial<SubtitleItem>) {
             ...updates,
         };
 
-        // Always save to localStorage first
-        saveToLocalStorage();
-
         // Auto-save to database if we have a current session
         if (subtitleState.currentSession) {
             updateSubtitleInDatabase(id, updates);
@@ -261,9 +204,6 @@ export function deleteSubtitle(id: string) {
     subtitleState.subtitles = subtitleState.subtitles.filter(
         (sub) => sub.id !== id
     );
-
-    // Always save to localStorage first
-    saveToLocalStorage();
 
     // Auto-delete from database if we have a current session
     if (subtitleState.currentSession) {
@@ -311,14 +251,10 @@ export function setSelectedSubtitle(id: string | null) {
 
 export function setSubtitles(subs: SubtitleItem[]) {
     subtitleState.subtitles = subs;
-    // Always save current state to localStorage
-    saveToLocalStorage();
 }
 
 export function setCurrentSession(session: Session | null) {
     subtitleState.currentSession = session;
-    // When setting a session, save current state to localStorage
-    saveToLocalStorage();
 }
 
 // Utility functions
