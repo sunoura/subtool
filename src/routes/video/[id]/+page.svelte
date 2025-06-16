@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { ArrowLeft } from "lucide-svelte";
-    import FileUpload from "$lib/components/FileUpload.svelte";
+    import SmartFileUpload from "$lib/components/SmartFileUpload.svelte";
     import VideoPlayer from "$lib/components/VideoPlayer.svelte";
     import SubtitleEditor from "$lib/components/SubtitleEditor.svelte";
     import SubtitleControls from "$lib/components/SubtitleControls.svelte";
@@ -81,7 +81,7 @@
                             Upload the video file for this session to continue
                             editing subtitles.
                         </p>
-                        <FileUpload />
+                        <SmartFileUpload />
                     </div>
                 {:else}
                     <VideoPlayer />

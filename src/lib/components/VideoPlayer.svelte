@@ -10,8 +10,8 @@
         getSortedSubtitles,
     } from "$lib/state/subtitleState.svelte.js";
 
-    let videoElement: HTMLVideoElement;
-    let progressBar: HTMLInputElement;
+    let videoElement = $state<HTMLVideoElement>();
+    let progressBar = $state<HTMLInputElement>();
 
     // Create derived state inside component
     const currentSubtitle = $derived(getCurrentSubtitle());
@@ -217,13 +217,15 @@
                     {/if}
                 </div>
                 <div class="flex justify-between text-sm text-gray-400">
-                    <span
+                    <button
                         onclick={copyCurrentTimeToClipboard}
-                        class="cursor-pointer hover:text-white transition-colors"
+                        onkeydown={(e) =>
+                            e.key === "Enter" && copyCurrentTimeToClipboard()}
+                        class="cursor-pointer hover:text-white transition-colors bg-transparent border-none text-inherit font-inherit p-0"
                         title="Click to copy current time to clipboard"
                     >
                         {formatTime(subtitleState.currentTime)}
-                    </span>
+                    </button>
                     <span>{formatTime(subtitleState.videoDuration)}</span>
                 </div>
             </div>

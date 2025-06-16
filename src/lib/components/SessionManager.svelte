@@ -18,6 +18,7 @@
         setCurrentSession,
         setSubtitles,
     } from "$lib/state/subtitleState.svelte.js";
+    import { safeFetch } from "$lib/stores/connectionStore.svelte.js";
     import type { Session } from "$lib/server/db/schema.js";
 
     let sessions = $state<Session[]>([]);
@@ -39,7 +40,7 @@
     async function loadSessions() {
         loading = true;
         try {
-            const response = await fetch("/api/sessions");
+            const response = await safeFetch("/api/sessions");
             const data = await response.json();
             if (response.ok && data.sessions) {
                 sessions = data.sessions;
@@ -63,7 +64,7 @@
 
         creating = true;
         try {
-            const response = await fetch("/api/sessions", {
+            const response = await safeFetch("/api/sessions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -191,7 +192,7 @@
         editingSessionName = "";
     }
 
-    // SRT Parsing function
+    // SRT Parsing function - Robust parser for various SRT time formats
     function parseSRT(content: string) {
         const subtitles = [];
         const blocks = content.trim().split(/\n\s*\n/);
@@ -200,15 +201,29 @@
             const lines = block.trim().split("\n");
             if (lines.length < 3) continue;
 
-            // Handle both HH:MM:SS,mmm and MM:SS,mmm formats
+            // Ultra-flexible regex to handle various SRT time formats from different sources:
+            // - HH:MM:SS,mmm (standard: 01:23:45,678)
+            // - H:MM:SS,mmm (single digit hours: 1:23:45,678)
+            // - MM:SS,mmm (no hours: 12:34,567)
+            // - M:SS,mmm (single digit minutes: 1:23,456)
+            // - Handles both , and . for milliseconds
+            // - Handles missing milliseconds entirely
+            // - Handles extra whitespace around arrows
             const timeMatch = lines[1].match(
-                /((?:\d{2}:)?\d{2}:\d{2},\d{3})\s*-->\s*((?:\d{2}:)?\d{2}:\d{2},\d{3})/
+                /(\d{1,3}(?::\d{1,2}){1,2}(?:[,.]?\d{0,3})?)\s*-->\s*(\d{1,3}(?::\d{1,2}){1,2}(?:[,.]?\d{0,3})?)/
             );
             if (!timeMatch) continue;
 
             const startTime = parseTimeFromSRT(timeMatch[1]);
             const endTime = parseTimeFromSRT(timeMatch[2]);
-            const text = lines.slice(2).join("\n");
+
+            // Skip invalid timestamps
+            if (isNaN(startTime) || isNaN(endTime)) continue;
+
+            const text = lines.slice(2).join("\n").trim();
+
+            // Skip empty subtitles
+            if (!text) continue;
 
             subtitles.push({
                 startTime,
@@ -222,7 +237,11 @@
     }
 
     function parseTimeFromSRT(timeString: string): number {
-        const [time, ms] = timeString.split(",");
+        // Clean up the input - trim whitespace and normalize millisecond separator
+        const cleanTime = timeString.trim().replace(".", ",");
+
+        // Split by comma/dot to separate time and milliseconds
+        const [time, milliseconds = "0"] = cleanTime.split(/[,.]/);
         const timeParts = time.split(":").map(Number);
 
         let hours = 0,
@@ -230,14 +249,48 @@
             seconds = 0;
 
         if (timeParts.length === 3) {
-            // HH:MM:SS format
+            // HH:MM:SS format (standard with hours)
             [hours, minutes, seconds] = timeParts;
         } else if (timeParts.length === 2) {
-            // MM:SS format (no hours)
+            // MM:SS format (no hours - common in web sources)
             [minutes, seconds] = timeParts;
+            hours = 0;
+        } else {
+            // Invalid format - need at least MM:SS
+            console.warn(`Invalid SRT time format: ${timeString}`);
+            return NaN;
         }
 
-        return hours * 3600 + minutes * 60 + seconds + Number(ms) / 1000;
+        // Validate time component ranges
+        if (
+            hours < 0 ||
+            hours > 999 || // Allow up to 999 hours for very long content
+            minutes < 0 ||
+            minutes >= 60 ||
+            seconds < 0 ||
+            seconds >= 60
+        ) {
+            console.warn(`Invalid time values in: ${timeString}`);
+            return NaN;
+        }
+
+        // Parse milliseconds - handle various formats from web sources
+        let ms = 0;
+        if (milliseconds) {
+            const msString = milliseconds.toString();
+            if (msString.length === 1) {
+                // Single digit: 5 becomes 500ms
+                ms = parseInt(msString) * 100;
+            } else if (msString.length === 2) {
+                // Two digits: 50 becomes 500ms
+                ms = parseInt(msString) * 10;
+            } else {
+                // Three or more digits: take first 3
+                ms = parseInt(msString.substring(0, 3));
+            }
+        }
+
+        return hours * 3600 + minutes * 60 + seconds + ms / 1000;
     }
 
     function handleSRTFileSelect(event: Event) {
@@ -427,16 +480,44 @@
 
     <!-- Sessions List -->
     <div>
-        <h3 class="text-lg font-semibold mb-4 text-gray-700">
-            Previous Sessions
-        </h3>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-700">
+                Previous Sessions
+            </h3>
+            {#if loading}
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <div
+                        class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"
+                    ></div>
+                    <span>Loading...</span>
+                </div>
+            {/if}
+        </div>
 
         {#if loading}
-            <div class="text-center py-8">
-                <div
-                    class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
-                ></div>
-                <p class="mt-2 text-gray-500">Loading sessions...</p>
+            <!-- Skeleton loading states -->
+            <div class="space-y-3">
+                {#each Array(3) as _, i (i)}
+                    <div
+                        class="border border-gray-200 rounded-lg p-4 animate-pulse"
+                    >
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div
+                                    class="h-4 bg-gray-200 rounded w-3/4 mb-2"
+                                ></div>
+                                <div
+                                    class="h-3 bg-gray-200 rounded w-1/2"
+                                ></div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <div class="h-6 bg-gray-200 rounded w-12"></div>
+                                <div class="h-6 bg-gray-200 rounded w-16"></div>
+                                <div class="h-6 bg-gray-200 rounded w-12"></div>
+                            </div>
+                        </div>
+                    </div>
+                {/each}
             </div>
         {:else if sessions.length === 0}
             <div class="text-center py-8">

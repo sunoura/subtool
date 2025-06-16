@@ -79,12 +79,18 @@
     </div>
 {:else}
     <div
+        role="button"
+        tabindex="0"
         class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-colors {dragOver
             ? 'border-blue-500 bg-blue-50'
             : 'hover:border-gray-400'}"
         ondragover={handleDragOver}
         ondragleave={handleDragLeave}
         ondrop={handleDrop}
+        onclick={triggerFileInput}
+        onkeydown={(e) =>
+            (e.key === "Enter" || e.key === " ") && triggerFileInput()}
+        aria-label="Upload video file by drag and drop or click to browse"
     >
         <Upload class="mx-auto text-gray-400 mb-4" size={48} />
         <h3 class="text-lg font-medium text-gray-700 mb-2">

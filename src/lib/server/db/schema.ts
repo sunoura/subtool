@@ -7,6 +7,10 @@ export const sessions = sqliteTable("sessions", {
         .$defaultFn(() => createId()),
     videoFileName: text("video_file_name").notNull(),
     videoUrl: text("video_url").notNull(),
+    // File metadata for persistence
+    videoFileSize: integer("video_file_size"), // in bytes
+    videoFileLastModified: integer("video_file_last_modified"), // timestamp
+    videoFileType: text("video_file_type"), // MIME type
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
         () => new Date()
     ),
