@@ -7,7 +7,6 @@
         formatTime,
         parseTime,
         exportToSRT,
-        getSortedSubtitles,
     } from "$lib/state/subtitleState.svelte.js";
 
     let newSubtitleText = $state("");

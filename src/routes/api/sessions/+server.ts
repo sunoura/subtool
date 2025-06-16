@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { db } from "$lib/server/db/index.js";
 import { sessions, subtitles } from "$lib/server/db/schema.js";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 
 export const GET: RequestHandler = async ({ url }) => {
     try {
@@ -18,15 +18,20 @@ export const GET: RequestHandler = async ({ url }) => {
                 return json({ error: "Session not found" }, { status: 404 });
             }
 
+            // Get subtitles ordered by start time (using database index)
             const sessionSubtitles = await db
                 .select()
                 .from(subtitles)
-                .where(eq(subtitles.sessionId, sessionId));
+                .where(eq(subtitles.sessionId, sessionId))
+                .orderBy(asc(subtitles.startTime));
 
             return json({ session, subtitles: sessionSubtitles });
         } else {
-            // Get all sessions
-            const allSessions = await db.select().from(sessions);
+            // Get all sessions ordered by most recently updated first
+            const allSessions = await db
+                .select()
+                .from(sessions)
+                .orderBy(desc(sessions.updatedAt));
             return json({ sessions: allSessions });
         }
     } catch (error) {

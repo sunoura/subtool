@@ -38,19 +38,38 @@ export const subtitleState = $state<AppState>(initialState);
 
 // Removed auto-backup functionality - keeping server connectivity warnings only
 
-// Helper functions for creating derived state in components
+// Optimized derived state - converted to functions for module export compatibility
+export function getSortedSubtitles() {
+    return [...subtitleState.subtitles].sort(
+        (a, b) => a.startTime - b.startTime
+    );
+}
+
 export function getCurrentSubtitle() {
-    return subtitleState.subtitles.find(
+    const sorted = getSortedSubtitles();
+    return sorted.find(
         (sub) =>
             sub.startTime <= subtitleState.currentTime &&
             sub.endTime >= subtitleState.currentTime
     );
 }
 
-export function getSortedSubtitles() {
-    return [...subtitleState.subtitles].sort(
-        (a, b) => a.startTime - b.startTime
-    );
+// Memoized subtitle markers for video player performance
+export function getSubtitleMarkers() {
+    if (subtitleState.videoDuration <= 0) return [];
+
+    const sorted = getSortedSubtitles();
+    return sorted.map((subtitle) => ({
+        id: subtitle.id,
+        percentage: subtitle.startTime / subtitleState.videoDuration,
+        position: (subtitle.startTime / subtitleState.videoDuration) * 100,
+        title: `Subtitle at ${formatTime(
+            subtitle.startTime
+        )}: ${subtitle.text.slice(0, 30)}${
+            subtitle.text.length > 30 ? "..." : ""
+        }`,
+        startTime: subtitle.startTime,
+    }));
 }
 
 // Actions
@@ -137,7 +156,19 @@ export function addSubtitle(startTime: number, endTime: number, text: string) {
         text,
         order: subtitleState.subtitles.length + 1,
     };
-    subtitleState.subtitles.push(newSubtitle);
+
+    // Insert in correct position to maintain sort order (performance optimization)
+    const insertIndex = subtitleState.subtitles.findIndex(
+        (sub) => sub.startTime > startTime
+    );
+
+    if (insertIndex === -1) {
+        // Add to end if no subtitle starts later
+        subtitleState.subtitles.push(newSubtitle);
+    } else {
+        // Insert at correct position
+        subtitleState.subtitles.splice(insertIndex, 0, newSubtitle);
+    }
 
     // Auto-save to database if we have a current session
     if (subtitleState.currentSession) {

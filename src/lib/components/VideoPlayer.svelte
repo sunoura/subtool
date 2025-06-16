@@ -8,14 +8,20 @@
         formatTime,
         getCurrentSubtitle,
         getSortedSubtitles,
+        getSubtitleMarkers,
     } from "$lib/state/subtitleState.svelte.js";
 
     let videoElement = $state<HTMLVideoElement>();
     let progressBar = $state<HTMLInputElement>();
 
-    // Create derived state inside component
+    // Performance optimization: throttle time updates
+    let lastTimeUpdate = 0;
+    const TIME_UPDATE_THROTTLE = 100; // 100ms throttle
+
+    // Create derived state inside component using the functions
     const currentSubtitle = $derived(getCurrentSubtitle());
     const sortedSubtitles = $derived(getSortedSubtitles());
+    const subtitleMarkers = $derived(getSubtitleMarkers());
 
     $effect(() => {
         if (videoElement && subtitleState.currentVideoUrl) {
@@ -70,6 +76,11 @@
     }
 
     function handleTimeUpdate() {
+        // Performance optimization: throttle time updates
+        const now = Date.now();
+        if (now - lastTimeUpdate < TIME_UPDATE_THROTTLE) return;
+
+        lastTimeUpdate = now;
         if (videoElement) {
             setCurrentTime(videoElement.currentTime);
         }
@@ -109,14 +120,13 @@
     function skipBackward() {
         // Go to previous subtitle
         const currentTime = subtitleState.currentTime;
-        const sorted = getSortedSubtitles();
 
         // Find the previous subtitle before the current time
         let previousSubtitle = null;
-        for (let i = sorted.length - 1; i >= 0; i--) {
-            if (sorted[i].startTime < currentTime - 0.1) {
+        for (let i = sortedSubtitles.length - 1; i >= 0; i--) {
+            if (sortedSubtitles[i].startTime < currentTime - 0.1) {
                 // Small buffer to avoid same subtitle
-                previousSubtitle = sorted[i];
+                previousSubtitle = sortedSubtitles[i];
                 break;
             }
         }
@@ -129,10 +139,9 @@
     function skipForward() {
         // Go to next subtitle
         const currentTime = subtitleState.currentTime;
-        const sorted = getSortedSubtitles();
 
         // Find the next subtitle after the current time
-        const nextSubtitle = sorted.find(
+        const nextSubtitle = sortedSubtitles.find(
             (sub) => sub.startTime > currentTime + 0.1
         ); // Small buffer
 
@@ -196,25 +205,14 @@
                         class="w-full h-2 bg-gray-700 rounded-xs appearance-none cursor-pointer range-slider"
                     />
 
-                    <!-- Subtitle markers -->
-                    {#if subtitleState.videoDuration > 0}
-                        {#each sortedSubtitles as subtitle (subtitle.id)}
-                            {@const percentage =
-                                subtitle.startTime /
-                                subtitleState.videoDuration}
-                            {@const position = percentage * 100}
-                            <div
-                                class="absolute top-0 w-0.5 h-2 bg-blue-400 pointer-events-none z-10"
-                                style="left: calc({position}% + 0.2px)"
-                                title="Subtitle at {formatTime(
-                                    subtitle.startTime
-                                )}: {subtitle.text.slice(0, 30)}{subtitle.text
-                                    .length > 30
-                                    ? '...'
-                                    : ''}"
-                            ></div>
-                        {/each}
-                    {/if}
+                    <!-- Optimized subtitle markers using memoized data -->
+                    {#each subtitleMarkers as marker (marker.id)}
+                        <div
+                            class="absolute top-0 w-0.5 h-2 bg-blue-400 pointer-events-none z-10"
+                            style="left: calc({marker.position}% + 0.2px)"
+                            title={marker.title}
+                        ></div>
+                    {/each}
                 </div>
                 <div class="flex justify-between text-sm text-gray-400">
                     <button

@@ -181,27 +181,66 @@ export async function safeFetch(
     }
 }
 
-// Start periodic connection checks
+// Start periodic connection checks with adaptive frequency
 export function startConnectionMonitoring() {
-    // Check immediately
+    let isUserActive = true;
+    let checkInterval: ReturnType<typeof setTimeout>;
+
+    // Adaptive check function that adjusts frequency based on user activity
+    const adaptiveCheck = () => {
+        checkConnection();
+
+        // Reduce frequency when user is inactive to save resources
+        const nextInterval = isUserActive ? 30000 : 120000; // 30s active, 2min inactive
+        checkInterval = setTimeout(adaptiveCheck, nextInterval);
+    };
+
+    // Track user activity to optimize check frequency
+    const handleVisibilityChange = () => {
+        const wasActive = isUserActive;
+        isUserActive = !document.hidden;
+
+        if (isUserActive && !wasActive) {
+            // User returned - immediate check and reset interval
+            checkConnection();
+            if (checkInterval) clearTimeout(checkInterval);
+            checkInterval = setTimeout(adaptiveCheck, 30000);
+        }
+    };
+
+    // Check immediately on start
     checkConnection();
 
-    // Check every 30 seconds
-    setInterval(checkConnection, 30000);
+    // Start adaptive checking
+    adaptiveCheck();
 
-    // Also check when the page becomes visible (user comes back to tab)
-    document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) {
-            checkConnection();
-        }
-    });
+    // Listen for visibility changes
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Check when online/offline events fire
-    window.addEventListener("online", checkConnection);
+    window.addEventListener("online", () => {
+        isUserActive = true; // Assume user is active when coming online
+        checkConnection();
+    });
+
     window.addEventListener("offline", () => {
         connectionState.isOnline = false;
         connectionState.lastChecked = new Date();
     });
+
+    // Cleanup function
+    return () => {
+        if (checkInterval) clearTimeout(checkInterval);
+        document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange
+        );
+        window.removeEventListener("online", checkConnection);
+        window.removeEventListener("offline", () => {
+            connectionState.isOnline = false;
+            connectionState.lastChecked = new Date();
+        });
+    };
 }
 
 // Get connection status for UI

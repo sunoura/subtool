@@ -16,7 +16,7 @@
     let editStart = $state("");
     let editEnd = $state("");
 
-    // Create derived state inside component
+    // Create derived state inside component using the function
     const sortedSubtitles = $derived(getSortedSubtitles());
 
     function scrollToEditingSubtitle(subtitleId: string) {
@@ -29,7 +29,6 @@
                 'textarea[rows="2"]'
             ) as HTMLTextAreaElement;
             if (editTextArea) {
-                // Scroll the container into view with smooth behavior
                 container.scrollIntoView({
                     behavior: "smooth",
                     block: "center",
@@ -92,7 +91,6 @@
         };
 
         // Add to state
-        
         subtitleState.subtitles.push(newSubtitle);
 
         // Auto-save to database if we have a current session
