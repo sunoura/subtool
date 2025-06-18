@@ -86,6 +86,13 @@
                 {:else}
                     <VideoPlayer />
                     <SubtitleControls />
+                    <button
+                        onclick={goBack}
+                        class="flex items-center space-x-2 mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-xs transition-colors mr-4"
+                    >
+                        <ArrowLeft size={16} />
+                        <span>Back to Sessions</span>
+                    </button>
                 {/if}
             </div>
 

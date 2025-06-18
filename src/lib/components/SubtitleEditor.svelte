@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Trash2, Edit3, Save, X, Play, Plus } from "lucide-svelte";
+    import { Trash2, PenLine, Save, X, Play, Plus } from "lucide-svelte";
     import {
         subtitleState,
         updateSubtitle,
@@ -77,9 +77,25 @@
     }
 
     async function addSubtitleAfter(endTime: number) {
-        // Create a new subtitle starting exactly where the clicked subtitle ends
-        const startTime = endTime;
-        const newEndTime = startTime + 3; // Default 3 seconds duration
+        // Add a small buffer (0.1s) to avoid overlaps and precision issues
+        const startTime = Math.round((endTime + 0.1) * 1000) / 1000; // Round to 3 decimal places
+        let newEndTime = Math.round((startTime + 3) * 1000) / 1000; // Default 3 seconds duration
+
+        // Check if there's a next subtitle that would overlap
+        const sortedSubs = getSortedSubtitles();
+        const nextSubtitle = sortedSubs.find((sub) => sub.startTime > endTime);
+
+        if (nextSubtitle && newEndTime > nextSubtitle.startTime) {
+            // Adjust the end time to not overlap with the next subtitle
+            // Leave a 0.1s buffer before the next subtitle
+            newEndTime =
+                Math.round((nextSubtitle.startTime - 0.1) * 1000) / 1000;
+
+            // Ensure minimum duration of 0.5 seconds
+            if (newEndTime - startTime < 0.5) {
+                newEndTime = Math.round((startTime + 0.5) * 1000) / 1000;
+            }
+        }
 
         const newSubtitleId = crypto.randomUUID() as string;
         const newSubtitle = {
@@ -216,7 +232,7 @@
                                     class="p-1 text-gray-500 hover:text-blue-600 transition-colors"
                                     title="Edit this subtitle"
                                 >
-                                    <Edit3 size={16} />
+                                    <PenLine size={16} />
                                 </button>
                                 <button
                                     onclick={() => handleDelete(subtitle.id)}

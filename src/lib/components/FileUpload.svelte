@@ -99,12 +99,12 @@
         <p class="text-gray-500 mb-4">
             Drag and drop your video file here, or click to browse
         </p>
-        <button
+        <!-- <button
             onclick={triggerFileInput}
             class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
         >
             Choose File
-        </button>
+        </button> -->
         <p class="text-xs text-gray-400 mt-2">
             Supports MP4, WebM, OGG, MOV, AVI (no size limit)
         </p>

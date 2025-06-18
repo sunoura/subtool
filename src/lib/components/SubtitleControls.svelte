@@ -32,7 +32,9 @@
     }
 
     function handleQuickAdd() {
-        if (!newSubtitleText.trim()) return;
+        if (!newSubtitleText.trim()) {
+            // alert("Please enter subtitle text");
+        }
 
         const startTime = subtitleState.currentTime;
         const endTime = startTime + 3; // Default 3 seconds duration
@@ -55,7 +57,7 @@
                     inline: "nearest",
                 });
             }
-        }, 200);
+        }, 20);
     }
 
     function downloadSRT() {
@@ -77,11 +79,10 @@
         <div class="flex items-center space-x-2">
             <button
                 onclick={handleQuickAdd}
-                disabled={!newSubtitleText.trim()}
                 class="flex text-xs uppercase font-medium items-center space-x-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded-xs transition-colors"
             >
                 <Plus size={16} />
-                <span>Add</span>
+                <span>Add Subtitle </span>
             </button>
         </div>
 
@@ -98,7 +99,7 @@
     </div>
 
     <!-- Add subtitle form -->
-    <div class="rounded-xs">
+    <!-- <div class="rounded-xs">
         <div class="space-y-4">
             <div>
                 <textarea
@@ -111,5 +112,5 @@
 
             <div class="flex space-x-3"></div>
         </div>
-    </div>
+    </div> -->
 </div>
