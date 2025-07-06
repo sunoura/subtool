@@ -200,16 +200,12 @@ export function formatTime(seconds: number): string {
     const secs = Math.floor(seconds % 60);
     const ms = Math.floor((seconds % 1) * 1000);
 
-    if (hours > 0) {
-        return `${hours.toString().padStart(2, "0")}:${minutes
-            .toString()
-            .padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${ms
-            .toString()
-            .padStart(3, "0")}`;
-    }
-    return `${minutes.toString().padStart(2, "0")}:${secs
+    // Always use HH:MM:SS,mmm format for global SRT standard
+    return `${hours.toString().padStart(2, "0")}:${minutes
         .toString()
-        .padStart(2, "0")}.${ms.toString().padStart(3, "0")}`;
+        .padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${ms
+        .toString()
+        .padStart(3, "0")}`;
 }
 
 export function parseTime(timeString: string): number {
