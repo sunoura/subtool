@@ -359,15 +359,15 @@
 </script>
 
 <div class="bg-white shadow-lg p-6">
-    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+    <h2 class="hidden text-2xl font-bold text-gray-800 mb-6 flex items-center">
         <Folder class="mr-2" size={24} />
         Subtitle Sessions
     </h2>
 
     <!-- Create New Session -->
     <div class="bg-blue-50 p-4 mb-6">
-        <h3 class="text-lg font-semibold mb-3 text-blue-800">
-            Create New Session
+        <h3 class="text-lg font-semibold mb-3 text-blue-800 capitalize">
+            New video session
         </h3>
         <div class="flex space-x-3">
             <input
@@ -389,7 +389,7 @@
     </div>
 
     <!-- Import SRT Session -->
-    <div class="bg-green-50 p-4 mb-6">
+    <div class="hidden bg-green-50 p-4 mb-6">
         <h3 class="text-lg font-semibold mb-3 text-green-800">
             Import SRT File
         </h3>
